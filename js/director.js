@@ -36,17 +36,18 @@ export class Director {
     const nebula = clamp01(seg(t, 8, 40, 5) + seg(t, 194, LOOP, 5));
     const bubbles = clamp01(seg(t, 22, 40, 5) + seg(t, 194, 226, 5));
 
-    // the journey — one scene at a time, crossfading
-    const figures = seg(t, 38, 58, 4);
-    const city = seg(t, 58, 76, 4);
-    const worm = seg(t, 76, 92, 4);
-    const tentacle = seg(t, 92, 110, 4);
-    const floor = seg(t, 110, 126, 4);
-    const tunnel = seg(t, 126, 142, 4);
-    const wire = seg(t, 142, 158, 4);
-    const mega = seg(t, 158, 178, 5);
-    const mandel = seg(t, 178, 196, 4);
-    const kaleido = seg(t, 196, 210, 4);
+    // the journey — scenes overlap by the fade width so each transition is a
+    // real A->B crossfade (no momentary dip to bare background)
+    const figures = seg(t, 36, 58, 4);
+    const city = seg(t, 54, 76, 4);
+    const worm = seg(t, 72, 92, 4);
+    const tentacle = seg(t, 88, 110, 4);
+    const floor = seg(t, 106, 126, 4);
+    const tunnel = seg(t, 122, 142, 4);
+    const wire = seg(t, 138, 158, 4);
+    const mega = seg(t, 154, 178, 5);
+    const mandel = seg(t, 174, 196, 4);
+    const kaleido = seg(t, 192, 210, 4);
     const lasers = seg(t, 206, 226, 4);
 
     // motion-blur trails: light early, heavier through the spectacle parts

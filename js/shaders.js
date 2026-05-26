@@ -8,16 +8,24 @@ void main() {
 }`;
 
 // ---------------------------------------------------------------------------
-// Main scene: neon-cyberpunk raymarcher with multiple weighted "scenes".
-// Active scene(s) are selected by the director through the weight uniforms;
-// only the active raymarch runs (gated by `if (weight > 0)`), so cost stays
-// bounded even though many effects live in one shader.
-//   background : parallax starfield + fbm nebula           (uStars / uNebula)
-//   bubbles    : glassy SDF metaballs, slow gel wobble      (uBubbles)
-//   tunnel     : analytic neon grid tunnel flight           (uTunnel)
-//   mega       : giant rotating grid-sphere + ring          (uMega)
-//   lasers     : additive beams                             (uLasers)
-//   kaleido    : screen-space mirror fold over everything   (uKaleido)
+// Main scene: neon-cyberpunk raymarcher with many weighted "scenes".
+// The director selects active scene(s) via weight uniforms; only active
+// raymarches run (gated by if(weight>0)), so cost stays bounded.
+//   background : parallax starfield + fbm nebula forward-flight  (uStars/uNebula)
+//   bubbles    : clear glass SDF metaballs                       (uBubbles)
+//   figures    : fly through a field of neon shapes              (uFigures)
+//   city       : neon city flyover                               (uCity)
+//   worm       : twisting wormhole tunnel                        (uWorm)
+//   tentacle   : waving neon columns                             (uTentacle)
+//   floor      : outrun grid floor + neon sun                    (uFloor)
+//   tunnel     : analytic neon grid tunnel                       (uTunnel)
+//   wire       : rotating wireframe vector object                (uWire)
+//   mega       : grid-sphere + panels + rings + moons            (uMega)
+//   mandel     : mandelbox fractal temple                        (uMandel)
+//   kaleido    : screen-space mirror fold                        (uKaleido)
+//   lasers     : additive beams                                  (uLasers)
+//   EQ bars (uEq/uSpectrum) drawn bottom; mouse parallax (uMouse).
+//   Post pass adds bloom, DoF, lens flares, CRT, vignette, grain.
 // ---------------------------------------------------------------------------
 export const DEMO_FRAG = `#version 300 es
 precision highp float;
@@ -437,7 +445,7 @@ float mandelboxField(vec3 p){
   float scale = 2.0;
   for(int i=0;i<10;i++){
     z = clamp(z, -1.0, 1.0)*2.0 - z;
-    float r2 = dot(z,z);
+    float r2 = max(dot(z,z), 1e-6);
     float k = max(1.0/r2, 1.0);
     z *= k; dz *= k;
     z = z*scale + p; dz = dz*scale + 1.0;

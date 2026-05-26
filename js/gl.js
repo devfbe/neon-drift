@@ -145,8 +145,6 @@ export class Renderer {
     gl.uniform1f(this._loc(this.postProg, "uBeat"), u.uBeat || 0);
     gl.uniform1f(this._loc(this.postProg, "uDof"), u.uDof || 0);
     gl.uniform1f(this._loc(this.postProg, "uCrt"), u.uCrt || 0);
-    gl.uniform1f(this._loc(this.postProg, "uGlitch"), u.uGlitch || 0);
-    gl.uniform1f(this._loc(this.postProg, "uDrop"), u.uDrop || 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
     // swap accumulation buffers
