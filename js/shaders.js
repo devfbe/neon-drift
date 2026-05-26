@@ -37,6 +37,7 @@ uniform float uTunnel;
 uniform float uMega;
 uniform float uKaleido;
 uniform float uFloor;
+uniform float uFigures;
 uniform vec2  uMouse;
 uniform float uDrop;
 uniform float uCamSpeed;
@@ -214,6 +215,71 @@ vec3 megaColor(vec3 ro, vec3 rd, out float alpha){
   return col;
 }
 
+// --- figure flight : fly forward through an endless lattice of neon shapes -
+float sdBox(vec3 p, vec3 b){ vec3 d = abs(p)-b; return length(max(d,0.0)) + min(max(d.x,max(d.y,d.z)),0.0); }
+
+// one varied, slowly rotating figure per 3D cell
+float figureField(vec3 wp){
+  float cell = 4.0;
+  vec3 id = floor(wp/cell);
+  vec3 q = mod(wp, cell) - cell*0.5;
+  q -= (hash33(id) - 0.5) * 1.3;            // jitter inside the cell
+  float h = hash13(id);
+  q.xy *= rot(uTime*0.3 + h*6.2831);
+  q.yz *= rot(uTime*0.2 + h*3.1416);
+  float size = 0.55 + h*0.55;
+  float ft = floor(h*5.0);
+  float d;
+  if(ft < 1.0)      d = length(q) - size*0.65;                                  // sphere
+  else if(ft < 2.0) d = sdBox(q, vec3(size*0.5));                               // box
+  else if(ft < 3.0){ vec2 cc = vec2(length(q.xz)-size*0.6, q.y); d = length(cc)-size*0.2; } // torus
+  else if(ft < 4.0) d = (abs(q.x)+abs(q.y)+abs(q.z) - size*0.95)*0.57;          // octahedron
+  else              d = (abs(q.x)+abs(q.y)+abs(q.z)*0.5 - size*0.8)*0.5;        // diamond/crystal
+  return d;
+}
+vec3 figureNormal(vec3 p){
+  vec2 e = vec2(0.005, 0.0);
+  return normalize(vec3(
+    figureField(p+e.xyy) - figureField(p-e.xyy),
+    figureField(p+e.yxy) - figureField(p-e.yxy),
+    figureField(p+e.yyx) - figureField(p-e.yyx)));
+}
+vec3 figureFlight(vec2 uv){
+  // banking camera weaving forward through the lattice
+  float spd = 4.5;
+  vec3 cp = vec3(sin(uTime*0.25)*3.0, sin(uTime*0.19)*2.2, uTime*spd);
+  vec3 ct = vec3(sin((uTime+0.6)*0.25)*3.0, sin((uTime+0.6)*0.19)*2.2, uTime*spd + 5.0);
+  vec3 fwd = normalize(ct - cp);
+  vec3 rt = normalize(cross(vec3(0,1,0), fwd));
+  vec3 up = cross(fwd, rt);
+  vec3 rd = normalize(fwd*1.4 + rt*(uv.x + uMouse.x*0.3) + up*(uv.y + uMouse.y*0.3));
+
+  float t = 0.0; bool hit = false;
+  for(int i=0;i<90;i++){
+    float d = figureField(cp + rd*t);
+    if(d < 0.002){ hit = true; break; }
+    t += d*0.8;
+    if(t > 42.0) break;
+  }
+  // distant nebular glow when nothing is hit
+  vec3 ambient = mix(vec3(0.08,0.02,0.12), vec3(0.02,0.06,0.12), 0.5+0.5*sin(uv.x*3.0+uTime));
+  if(!hit) return ambient*0.6;
+
+  vec3 p = cp + rd*t;
+  vec3 n = figureNormal(p);
+  float fres = pow(clamp(1.0 - dot(n, -rd), 0.0, 1.0), 3.0);
+  vec3 id = floor(p/4.0);
+  float h = hash13(id);
+  // neon-cyberpunk palette: magenta <-> cyan, occasional violet accent
+  vec3 tint = mix(vec3(1.0,0.12,0.7), vec3(0.15,0.85,1.0), h);
+  tint = mix(tint, vec3(0.6,0.2,1.0), smoothstep(0.45,0.55,h)*0.6);
+  float diff = max(dot(n, normalize(vec3(0.5,0.7,-0.4))), 0.0);
+  float fog = exp(-t*0.045);
+  // glowing neon: dark faces, bright fresnel edges, subtle diffuse
+  vec3 col = tint*(0.12 + fres*2.8 + uBeat*0.5) + tint*diff*0.25;
+  return col*fog + ambient*fog;
+}
+
 // --- outrun grid floor + neon sun -----------------------------------------
 vec3 floorScene(vec2 uv, vec3 ro, vec3 rd){
   vec3 col = vec3(0.0);
@@ -305,6 +371,12 @@ void main(){
   rd = normalize(rd);
 
   vec3 color = background(rd);
+
+  // figure flight: fly forward through a field of neon shapes
+  if(uFigures > 0.001){
+    vec3 ff = figureFlight(uv) + background(rd)*0.15;
+    color = mix(color, ff, uFigures);
+  }
 
   // outrun grid floor + neon sun
   if(uFloor > 0.001){

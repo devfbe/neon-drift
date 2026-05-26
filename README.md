@@ -17,16 +17,17 @@ Track aus, springt ein synthetisierter Beat als Fallback ein.)
 
 ## Die Demo
 
-Eine Multi-Part-Timeline (loopt endlos, 162s):
+Eine Multi-Part-Timeline (loopt endlos, 178s):
 
 1. **Intro** (0–12s) — Sterne, Titel glüht rein
-2. **Nebula Flight** (12–28s) — Flug durch driftende Nebula, erste Gel-Bubbles
-3. **Gel Bubbles** (28–48s) — transparente, glasige Metaballs, langsam wabernd
-4. **Outrun Floor** (48–70s) — Synthwave-Gitterboden + Neon-Sonne
-5. **Neon Tunnel** (70–90s) — Flug durch eine Neon-Gitter-Röhre
-6. **Mega Structure** (90–114s) — gigantische rotierende Tron-Gitterkugel + Ring
-7. **Kaleidoscope** (114–136s) — gespiegelte Mandala-Psychedelik
-8. **Laser Finale** (136–162s) — Laser-Salven, Regenbogen-Greetings-Scroller
+2. **Nebula Flight** (12–26s) — Flug durch driftende Nebula, erste Gel-Bubbles
+3. **Gel Bubbles** (26–44s) — wenige klare Glas-Gel-Bubbles, langsam wabernd
+4. **Figure Flight** (44–74s) — Durchflug durch ein endloses Feld glühender Neon-Figuren (Kugeln, Würfel, Tori, Kristalle), Banking-Kamera
+5. **Outrun Floor** (74–94s) — Synthwave-Gitterboden + Neon-Sonne
+6. **Neon Tunnel** (94–112s) — Flug durch eine Neon-Gitter-Röhre
+7. **Mega Structure** (112–134s) — gigantische rotierende Tron-Gitterkugel + Ring
+8. **Kaleidoscope** (134–154s) — gespiegelte Mandala-Psychedelik
+9. **Laser Finale** (154–178s) — Laser-Salven, Regenbogen-Greetings-Scroller
 
 Audio: Bass pumpt die Bubbles, Höhen triggern Laser, Beat treibt Glow &
 Chromatic Aberration, **Drops** (Spectral-Flux-Erkennung) lösen Flashes &
