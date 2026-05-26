@@ -38,6 +38,7 @@ uniform float uMega;
 uniform float uKaleido;
 uniform float uFloor;
 uniform float uFigures;
+uniform float uCity;
 uniform vec2  uMouse;
 uniform float uDrop;
 uniform float uCamSpeed;
@@ -298,6 +299,48 @@ vec3 figureFlight(vec2 uv){
   return col*fog + ambient*fog;
 }
 
+// --- city flyover : fly low over a neon city of buildings ------------------
+// buildings on a grid; streets are at cell boundaries; camera flies along a street
+float cityField(vec3 p){
+  float cell = 6.0;
+  vec2 id = floor(p.xz/cell);
+  vec2 q = mod(p.xz, cell) - cell*0.5;
+  float h = hash13(vec3(id, 1.0));
+  float height = 3.0 + h*9.0;
+  // building footprint 2.0x2.0, centered in the 6-unit cell (2-unit street gap)
+  vec3 bc = vec3(abs(q.x) - 2.0, abs(p.y - height*0.5) - height*0.5, abs(q.y) - 2.0);
+  return length(max(bc,0.0)) + min(max(bc.x,max(bc.y,bc.z)),0.0);
+}
+vec3 cityNormal(vec3 p){ vec2 e=vec2(0.01,0.0); return normalize(vec3(
+  cityField(p+e.xyy)-cityField(p-e.xyy), cityField(p+e.yxy)-cityField(p-e.yxy),
+  cityField(p+e.yyx)-cityField(p-e.yyx))); }
+vec3 cityFlight(vec2 uv){
+  // camera flies straight along the street (x=0, z advances with time)
+  // gentle banking based on uMouse for interactivity
+  float spd = 5.0;
+  vec3 cp = vec3(0.0, 4.0, uTime*spd);
+  vec3 fwd = normalize(vec3(uMouse.x*0.2, uMouse.y*0.1 - 0.05, 1.0));
+  vec3 rt = normalize(cross(vec3(0,1,0), fwd));
+  vec3 up = cross(fwd, rt);
+  vec3 rd = normalize(fwd*1.4 + rt*uv.x + up*uv.y);
+  float t=0.0; bool hit=false;
+  for(int i=0;i<96;i++){ float d=cityField(cp+rd*t); if(d<0.003){hit=true;break;} t+=d*0.8; if(t>80.0)break; }
+  // dark purple-to-black sky gradient
+  float skyT = clamp(uv.y*0.8+0.5, 0.0, 1.0);
+  vec3 sky = mix(vec3(0.12,0.01,0.18), vec3(0.0,0.0,0.02), skyT);
+  if(!hit) return sky;
+  vec3 p=cp+rd*t; vec3 n=cityNormal(p);
+  // windows: lit rectangular patches; use the tangential coord for horizontal tiling
+  // for X-facing walls (side walls) horizontal axis is Z; for Z-facing walls it is X
+  float horiz = abs(n.x) > 0.5 ? p.z : p.x;
+  float win = step(0.55, fract(p.y*1.2)) * step(0.55, fract(horiz*1.0));
+  vec3 tint = mix(vec3(1.0,0.2,0.7), vec3(0.2,0.8,1.0), hash13(vec3(floor(p.xz/6.0), 0.0)));
+  float fog = exp(-t*0.04);
+  // dark building body + emissive windows
+  vec3 face = tint * (win * 2.0 + 0.04) + vec3(0.01,0.0,0.03);
+  return face * fog;
+}
+
 // --- outrun grid floor + neon sun -----------------------------------------
 vec3 floorScene(vec2 uv, vec3 ro, vec3 rd){
   vec3 col = vec3(0.0);
@@ -395,6 +438,8 @@ void main(){
     vec3 ff = figureFlight(uv) + background(rd)*0.15;
     color = mix(color, ff, uFigures);
   }
+
+  if(uCity > 0.001){ color = mix(color, cityFlight(uv) + background(rd)*0.1, uCity); }
 
   // outrun grid floor + neon sun
   if(uFloor > 0.001){

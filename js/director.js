@@ -52,6 +52,7 @@ export class Director {
         uNebula: nebula,
         uBubbles: bubbles,
         uFigures: figures,
+        uCity: 0,
         uFloor: floor,
         uTunnel: tunnel,
         uMega: mega,
