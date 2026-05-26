@@ -642,12 +642,14 @@ uniform vec2  uRes;
 uniform float uTime;
 uniform float uBeat;
 uniform float uDof;
+uniform float uCrt;
 
 float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 center = uv - 0.5;
+  if(uCrt > 0.5){ vec2 cc = uv-0.5; uv = cc*(1.0+dot(cc,cc)*0.15)+0.5; center = uv-0.5; }
 
   float ca = (0.0025 + uBeat*0.006) * length(center);
   vec3 base;
@@ -691,5 +693,9 @@ void main(){
   col *= smoothstep(1.15, 0.35, length(center));
   float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)) + uTime*60.0) * 43758.5453);
   col += (g-0.5)*0.04;
+  if(uCrt > 0.5){
+    col *= 0.85 + 0.15*sin(uv.y*uRes.y*3.14159);
+    col *= smoothstep(1.25, 0.15, length(center));
+  }
   fragColor = vec4(col, 1.0);
 }`;
