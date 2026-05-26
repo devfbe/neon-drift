@@ -12,9 +12,10 @@ const scrollerEl = document.getElementById("scroller");
 const nowPlaying = document.getElementById("now-playing");
 
 const GREETINGS =
-  "NEON DRIFT — a webgl demo by claude code  ***  greetings fly out to the demoscene, " +
-  "the shader wizards, the chiptune heroes and everyone still coding pixels at 4am  ***  " +
-  "drop your own track into the window to make it pump  ***  stay neon  ***  ";
+  "NEON DRIFT — a webgl demo by DEVFBE  ***  code & visuals: devfbe  ***  " +
+  "greetings fly out to the demoscene, the shader wizards, the chiptune heroes " +
+  "and everyone still coding pixels at 4am  ***  " +
+  "drop your own track into the window to make it pump  ***  stay neon — devfbe  ***  ";
 
 // build per-letter spans (doubled so the marquee wraps seamlessly)
 const spans = [];
