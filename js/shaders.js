@@ -40,6 +40,7 @@ uniform float uKaleido;
 uniform float uFloor;
 uniform float uFigures;
 uniform float uCity;
+uniform float uTentacle;
 uniform vec2  uMouse;
 uniform float uDrop;
 uniform float uCamSpeed;
@@ -342,6 +343,32 @@ vec3 cityFlight(vec2 uv){
   return face * fog;
 }
 
+// --- tentacle field : fly through a forest of waving neon columns ----------
+float tentacleField(vec3 p){
+  vec2 cell = vec2(3.5);
+  vec2 id = floor(p.xz/cell);
+  vec2 q = mod(p.xz, cell) - cell*0.5;
+  float h = hash13(vec3(id,2.0));
+  q.x += sin(p.y*0.5 + uTime + h*6.28)*0.8;
+  q.y += cos(p.y*0.4 + uTime*0.8 + h*6.28)*0.8;
+  float rad = 0.25 + 0.15*sin(p.y*0.7 + uTime);
+  return length(q) - rad;
+}
+vec3 tentacleNormal(vec3 p){ vec2 e=vec2(0.008,0.0); return normalize(vec3(
+  tentacleField(p+e.xyy)-tentacleField(p-e.xyy), tentacleField(p+e.yxy)-tentacleField(p-e.yxy),
+  tentacleField(p+e.yyx)-tentacleField(p-e.yyx))); }
+vec3 tentacleFlight(vec2 uv){
+  vec3 cp; vec3 rd = flightRay(uv, 3.5, 23.0, cp);
+  float t=0.0; bool hit=false;
+  for(int i=0;i<90;i++){ float d=tentacleField(cp+rd*t); if(d<0.003){hit=true;break;} t+=d*0.7; if(t>40.0)break; }
+  if(!hit) return vec3(0.04,0.0,0.07);
+  vec3 p=cp+rd*t; vec3 n=tentacleNormal(p);
+  float fres=pow(clamp(1.0-dot(n,-rd),0.0,1.0),3.0);
+  vec3 tint=mix(vec3(1.0,0.1,0.6), vec3(0.5,0.2,1.0), 0.5+0.5*sin(p.y*0.3));
+  float fog=exp(-t*0.05);
+  return (tint*(0.15+fres*2.4) + tint*0.2)*fog;
+}
+
 // --- outrun grid floor + neon sun -----------------------------------------
 vec3 floorScene(vec2 uv, vec3 ro, vec3 rd){
   vec3 col = vec3(0.0);
@@ -456,6 +483,8 @@ void main(){
   }
 
   if(uCity > 0.001){ color = mix(color, cityFlight(uv) + background(rd)*0.1, uCity); }
+
+  if(uTentacle > 0.001){ color = mix(color, tentacleFlight(uv) + background(rd)*0.1, uTentacle); }
 
   // outrun grid floor + neon sun
   if(uFloor > 0.001){
