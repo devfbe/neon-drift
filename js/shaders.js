@@ -36,6 +36,9 @@ uniform float uStars;
 uniform float uTunnel;
 uniform float uMega;
 uniform float uKaleido;
+uniform float uFloor;
+uniform vec2  uMouse;
+uniform float uDrop;
 uniform float uCamSpeed;
 uniform float uFade;
 
@@ -211,6 +214,32 @@ vec3 megaColor(vec3 ro, vec3 rd, out float alpha){
   return col;
 }
 
+// --- outrun grid floor + neon sun -----------------------------------------
+vec3 floorScene(vec2 uv, vec3 ro, vec3 rd){
+  vec3 col = vec3(0.0);
+  // synthwave sun: disc with horizontal scanline gaps in the lower half
+  vec2 sp = uv - vec2(0.0, 0.16);
+  float sd = length(vec2(sp.x, sp.y*1.05));
+  float disc = smoothstep(0.40, 0.385, sd);
+  float bands = step(0.0, sin(uv.y*70.0));
+  float bandMask = mix(1.0, bands, smoothstep(0.16, -0.02, uv.y));
+  vec3 sunCol = mix(vec3(1.0,0.9,0.25), vec3(1.0,0.12,0.6), smoothstep(-0.2,0.4,uv.y));
+  col += disc*bandMask*sunCol*(1.5 + uDrop*1.5);
+  col += sunCol*pow(max(0.0,1.0-sd*1.25),3.0)*0.5;          // glow halo
+  // receding neon grid floor
+  if(rd.y < -0.002){
+    float t = (-1.0 - ro.y)/rd.y;
+    vec3 p = ro + rd*t;
+    float gz = abs(fract(p.z*0.4 + uTime*2.0) - 0.5);
+    float gx = abs(fract(p.x*0.4) - 0.5);
+    float lz = smoothstep(0.05, 0.0, gz);
+    float lx = smoothstep(0.05, 0.0, gx);
+    float fog = exp(-t*0.03);
+    col += (vec3(0.2,0.9,1.0)*lz + vec3(1.0,0.12,0.8)*lx) * fog * 1.3;
+  }
+  return col;
+}
+
 // --- neon tunnel (analytic) -----------------------------------------------
 vec3 tunnel(vec2 uv){
   float r = length(uv);
@@ -271,8 +300,17 @@ void main(){
   float ca = cos(sw*0.5)*0.05, sa = sin(sw*0.5)*0.05;
   rd.xy = rot(sa) * rd.xy;
   rd.xz = rot(ca) * rd.xz;
+  // mouse parallax tilt
+  rd.xy += uMouse*0.07;
+  rd = normalize(rd);
 
   vec3 color = background(rd);
+
+  // outrun grid floor + neon sun
+  if(uFloor > 0.001){
+    vec3 fc = floorScene(uv, ro, rd) + background(rd)*0.3;
+    color = mix(color, fc, uFloor);
+  }
 
   // neon tunnel
   if(uTunnel > 0.001){
@@ -315,13 +353,34 @@ void main(){
   // additive lasers
   color += lasers(ro, rd);
 
+  // drop flash
+  color += uDrop*0.12;
+
   color *= uFade;
   color = 1.0 - exp(-color*1.3);
   fragColor = vec4(color, 1.0);
 }`;
 
 // ---------------------------------------------------------------------------
-// Post pass: cheap bloom + chromatic aberration + vignette + film grain.
+// Feedback pass: blend the current frame with the (slightly zoomed) previous
+// accumulation buffer for light-trail motion blur.
+// ---------------------------------------------------------------------------
+export const FEEDBACK_FRAG = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform sampler2D uScene;
+uniform sampler2D uPrev;
+uniform vec2  uRes;
+uniform float uTrail;   // 0..1 persistence of previous frame
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 scene = texture(uScene, uv).rgb;
+  vec3 prev = texture(uPrev, (uv-0.5)*0.996 + 0.5).rgb;   // subtle pull to centre
+  fragColor = vec4(max(scene, prev*uTrail), 1.0);
+}`;
+
+// ---------------------------------------------------------------------------
+// Post pass: bloom + chromatic aberration + glitch + vignette + film grain.
 // ---------------------------------------------------------------------------
 export const POST_FRAG = `#version 300 es
 precision highp float;
@@ -331,18 +390,29 @@ uniform sampler2D uScene;
 uniform vec2  uRes;
 uniform float uTime;
 uniform float uBeat;
+uniform float uGlitch;
+uniform float uDrop;
 
 float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
+float h21(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 center = uv - 0.5;
 
-  float ca = (0.0025 + uBeat*0.006) * length(center);
+  // glitch: horizontal block displacement on bands
+  float gl = clamp(uGlitch + uDrop*0.6, 0.0, 1.0);
+  if(gl > 0.001){
+    float band = floor(uv.y*24.0);
+    float jit = (h21(vec2(band, floor(uTime*18.0))) - 0.5);
+    uv.x += jit * gl * 0.06 * step(0.6, h21(vec2(band, floor(uTime*12.0))));
+  }
+
+  float ca = (0.0025 + uBeat*0.006 + gl*0.02) * length(center) + gl*0.01;
   vec3 base;
-  base.r = texture(uScene, uv + center*ca).r;
+  base.r = texture(uScene, uv + center*ca + vec2(ca,0.0)).r;
   base.g = texture(uScene, uv).g;
-  base.b = texture(uScene, uv - center*ca).b;
+  base.b = texture(uScene, uv - center*ca - vec2(ca,0.0)).b;
 
   vec3 bloom = vec3(0.0);
   float total = 0.0;

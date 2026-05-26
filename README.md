@@ -17,18 +17,33 @@ Track aus, springt ein synthetisierter Beat als Fallback ein.)
 
 ## Die Demo
 
-Eine Multi-Part-Timeline (loopt endlos, 150s):
+Eine Multi-Part-Timeline (loopt endlos, 162s):
 
 1. **Intro** (0–12s) — Sterne, Titel glüht rein
-2. **Nebula Flight** (12–30s) — Flug durch driftende Nebula, erste Gel-Bubbles
-3. **Gel Bubbles** (30–52s) — transparente, glasige Metaballs, langsam wabernd
-4. **Neon Tunnel** (52–74s) — Flug durch eine Neon-Gitter-Röhre
-5. **Mega Structure** (74–100s) — gigantische rotierende Tron-Gitterkugel + Ring
-6. **Kaleidoscope** (100–124s) — gespiegelte Mandala-Psychedelik
-7. **Laser Finale** (124–150s) — Laser-Salven, Greetings-Scroller
+2. **Nebula Flight** (12–28s) — Flug durch driftende Nebula, erste Gel-Bubbles
+3. **Gel Bubbles** (28–48s) — transparente, glasige Metaballs, langsam wabernd
+4. **Outrun Floor** (48–70s) — Synthwave-Gitterboden + Neon-Sonne
+5. **Neon Tunnel** (70–90s) — Flug durch eine Neon-Gitter-Röhre
+6. **Mega Structure** (90–114s) — gigantische rotierende Tron-Gitterkugel + Ring
+7. **Kaleidoscope** (114–136s) — gespiegelte Mandala-Psychedelik
+8. **Laser Finale** (136–162s) — Laser-Salven, Regenbogen-Greetings-Scroller
 
 Audio: Bass pumpt die Bubbles, Höhen triggern Laser, Beat treibt Glow &
-Chromatic Aberration.
+Chromatic Aberration, **Drops** (Spectral-Flux-Erkennung) lösen Flashes &
+Glitches aus. Zwischen den Parts gibt's **Glitch/RGB-Shift-Übergänge** und
+die ganze Pipeline läuft mit **Motion-Blur-Trails**.
+
+## Steuerung
+
+| Taste | Funktion |
+|-------|----------|
+| `F` | Vollbild an/aus |
+| `← / →` | 10s in der Timeline zurück/vor springen |
+| `H` | UI/Overlays aus- und einblenden |
+| `+ / -` | Render-Auflösung hoch/runter (Performance) |
+| Maus | leichtes Parallax-Tilt der Kamera |
+
+Die Auflösung skaliert zudem **automatisch**, um ~55fps zu halten.
 
 ## Dev-/Kiosk-Parameter
 

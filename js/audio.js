@@ -4,9 +4,12 @@ export class AudioEngine {
     this.ctx = null;
     this.analyser = null;
     this.freq = null;
-    this.levels = { bass: 0, mid: 0, treble: 0, beat: 0 };
+    this.levels = { bass: 0, mid: 0, treble: 0, beat: 0, drop: 0 };
     this._bassAvg = 0;
     this._beat = 0;
+    this._prevSpectrum = null;
+    this._fluxAvg = 0;
+    this._drop = 0;
     this._placeholder = null;   // { timer }
     this._source = null;        // active file BufferSource
     this.trackName = null;
@@ -152,12 +155,26 @@ export class AudioEngine {
     if (bass > this._bassAvg * 1.35 && bass > 0.25) this._beat = 1.0;
     this._beat *= 0.86;
 
+    // drop/onset detection via spectral flux (sum of positive bin changes)
+    if (!this._prevSpectrum) this._prevSpectrum = new Uint8Array(f.length);
+    let flux = 0;
+    for (let i = 0; i < 256; i++) {
+      const d = f[i] - this._prevSpectrum[i];
+      if (d > 0) flux += d;
+      this._prevSpectrum[i] = f[i];
+    }
+    flux /= 256 * 255;
+    this._fluxAvg = this._fluxAvg * 0.95 + flux * 0.05;
+    if (flux > this._fluxAvg * 2.2 && flux > 0.04) this._drop = 1.0;
+    this._drop *= 0.90;
+
     // smooth bands
     const L = this.levels;
     L.bass = L.bass * 0.6 + bass * 0.4;
     L.mid = L.mid * 0.6 + mid * 0.4;
     L.treble = L.treble * 0.6 + treble * 0.4;
     L.beat = this._beat;
+    L.drop = this._drop;
     return L;
   }
 }
