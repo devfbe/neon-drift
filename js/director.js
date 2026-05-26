@@ -26,7 +26,7 @@ function seg(t, start, end, fade) {
 }
 
 export class Director {
-  update(time) {
+  update(time, levels = {}) {
     const t = time % LOOP;
 
     const fade = smoothstep(0, 2.5, t) * (1 - smoothstep(LOOP - 2.5, LOOP, t));
@@ -60,6 +60,8 @@ export class Director {
     const subtitle = seg(t, 4.0, 9.0, 2.0);
     const scroller = seg(t, 210.0, LOOP - 2.0, 3.0);
 
+    const intensity = 0.7 + (levels.energy || 0) * 0.6;
+
     return {
       uniforms: {
         uStars: stars,
@@ -75,9 +77,9 @@ export class Director {
         uMega: mega,
         uMandel: mandel,
         uKaleido: kaleido,
-        uLasers: lasers,
-        uTrail: trail,
-        uCamSpeed: camSpeed,
+        uLasers: Math.min(1, lasers * intensity),
+        uTrail: Math.min(0.85, trail * (0.9 + 0.2 * intensity)),
+        uCamSpeed: camSpeed * (0.9 + 0.2 * intensity),
         uFade: fade,
         uDof: 0.6,
       },

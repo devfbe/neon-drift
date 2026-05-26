@@ -4,12 +4,13 @@ export class AudioEngine {
     this.ctx = null;
     this.analyser = null;
     this.freq = null;
-    this.levels = { bass: 0, mid: 0, treble: 0, beat: 0, drop: 0 };
+    this.levels = { bass: 0, mid: 0, treble: 0, beat: 0, drop: 0, energy: 0, section: 0 };
     this._bassAvg = 0;
     this._beat = 0;
     this._prevSpectrum = null;
     this._fluxAvg = 0;
     this._drop = 0;
+    this._energy = 0; this._section = 0; this._lastSection = 0;
     this._placeholder = null;   // { timer }
     this._source = null;        // active file BufferSource
     this.trackName = null;
@@ -180,6 +181,12 @@ export class AudioEngine {
     if (flux > this._fluxAvg * 2.2 && flux > 0.04) this._drop = 1.0;
     this._drop *= 0.90;
 
+    // rolling overall energy + section counter (advances on strong drops)
+    this._energy = this._energy*0.9 + (bass+mid+treble)/3*0.1;
+    if (this._drop > 0.9 && (performance.now() - this._lastSection) > 4000) {
+      this._section++; this._lastSection = performance.now();
+    }
+
     // smooth bands
     const L = this.levels;
     L.bass = L.bass * 0.6 + bass * 0.4;
@@ -187,6 +194,7 @@ export class AudioEngine {
     L.treble = L.treble * 0.6 + treble * 0.4;
     L.beat = this._beat;
     L.drop = this._drop;
+    L.energy = this._energy; L.section = this._section;
     return L;
   }
 }

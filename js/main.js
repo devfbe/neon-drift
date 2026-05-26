@@ -83,7 +83,7 @@ const forcedScene = SCENE_ALIAS[params.get("scene")] || null;
 function frame(now) {
   const time = (now - t0) / 1000;
   const levels = audio.getLevels();
-  const state = director.update(time);
+  const state = director.update(time, levels);
 
   // smooth mouse
   mouse.x += (mouse.tx - mouse.x) * 0.08;
