@@ -158,9 +158,21 @@ float megaField(vec3 wp){
   p.xz *= rot(uTime*0.14);
   p.xy *= rot(uTime*0.06);
   float core = length(p) - 3.0;
-  vec2 q = vec2(length(p.xz) - 4.7, p.y);
-  float ring = length(q) - 0.14;
-  return min(core, ring);
+  float ring = 1e9;
+  for(int i=0;i<3;i++){
+    vec3 rp = p;
+    rp.yz *= rot(float(i)*1.0472);            // 60deg apart
+    float rad = 4.6 + float(i)*0.5;
+    vec2 q = vec2(length(rp.xz)-rad, rp.y);
+    ring = min(ring, length(q)-0.12);
+  }
+  float moons = 1e9;
+  for(int i=0;i<4;i++){
+    float a = uTime*0.5 + float(i)*1.5708;
+    vec3 m = vec3(cos(a)*6.0, sin(a*1.3)*1.5, sin(a)*6.0);
+    moons = min(moons, length(p-m)-0.5);
+  }
+  return min(min(core, ring), moons);
 }
 vec3 megaNormal(vec3 p){
   vec2 e = vec2(0.004, 0.0);
@@ -172,13 +184,16 @@ vec3 megaNormal(vec3 p){
 // recompute the rotated object-space point + which primitive is nearest
 void megaParts(vec3 wp, out vec3 op, out float matId){
   vec3 p = wp - vec3(0.0, 0.0, 9.0);
-  p.xz *= rot(uTime*0.14);
-  p.xy *= rot(uTime*0.06);
+  p.xz *= rot(uTime*0.14); p.xy *= rot(uTime*0.06);
   op = p;
   float core = length(p) - 3.0;
-  vec2 q = vec2(length(p.xz) - 4.7, p.y);
-  float ring = length(q) - 0.14;
-  matId = core < ring ? 1.0 : 2.0;
+  float ring = 1e9;
+  for(int i=0;i<3;i++){ vec3 rp=p; rp.yz*=rot(float(i)*1.0472);
+    vec2 q=vec2(length(rp.xz)-(4.6+float(i)*0.5), rp.y); ring=min(ring,length(q)-0.12); }
+  float moons=1e9;
+  for(int i=0;i<4;i++){ float a=uTime*0.5+float(i)*1.5708;
+    vec3 m=vec3(cos(a)*6.0,sin(a*1.3)*1.5,sin(a)*6.0); moons=min(moons,length(p-m)-0.5); }
+  matId = core<ring ? (core<moons?1.0:3.0) : (ring<moons?2.0:3.0);
 }
 
 vec3 megaColor(vec3 ro, vec3 rd, out float alpha){
@@ -199,18 +214,17 @@ vec3 megaColor(vec3 ro, vec3 rd, out float alpha){
   float fres = pow(clamp(1.0 - dot(n, -rd), 0.0, 1.0), 3.0);
   vec3 col;
   if(matId < 1.5){
-    // grid-sphere: neon tron grid in spherical coords + fresnel rim
     vec3 ln = normalize(op);
-    float lat = asin(clamp(ln.y, -1.0, 1.0));
-    float lon = atan(ln.z, ln.x);
-    float la = abs(sin(lat*12.0));
-    float lo = abs(sin(lon*12.0));
-    float grid = pow(1.0 - min(la, lo), 22.0);
+    float lat = asin(clamp(ln.y,-1.0,1.0)), lon = atan(ln.z, ln.x);
+    float grid = pow(1.0 - min(abs(sin(lat*12.0)), abs(sin(lon*12.0))), 22.0);
+    float panel = pow(1.0 - min(abs(sin(lat*40.0)), abs(sin(lon*40.0))), 40.0)*0.4;
     vec3 tint = mix(vec3(0.1,0.9,1.0), vec3(1.0,0.1,0.8), 0.5+0.5*sin(lon*2.0+uTime*0.4));
-    col = tint*grid*(2.2 + uBeat*1.5) + tint*fres*1.6 + vec3(0.03,0.0,0.07);
+    float corePulse = (0.4 + 0.6*uBeat) * pow(fres, 1.5);
+    col = tint*(grid*2.2 + panel) + tint*fres*1.6 + tint*corePulse + vec3(0.03,0.0,0.07);
+  } else if(matId < 2.5){
+    col = mix(vec3(1.0,0.2,0.9), vec3(0.2,1.0,1.0), 0.5+0.5*sin(uTime))*(2.6+uBeat*1.5);
   } else {
-    // emissive neon ring
-    col = mix(vec3(1.0,0.2,0.9), vec3(0.2,1.0,1.0), 0.5+0.5*sin(uTime)) * (2.6 + uBeat*1.5);
+    col = vec3(0.6,0.95,1.0)*3.0;   // moons: bright emissive
   }
   alpha = 1.0;
   return col;
