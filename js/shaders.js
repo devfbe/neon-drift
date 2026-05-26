@@ -47,6 +47,8 @@ uniform float uCamSpeed;
 uniform float uFade;
 uniform float uMandel;
 uniform float uWire;
+uniform float uEq;
+uniform float uSpectrum[32];
 
 #define PI 3.14159265
 
@@ -607,6 +609,17 @@ void main(){
   // drop flash
   color += uDrop*0.12;
 
+  if(uEq > 0.001){
+    vec2 suv = gl_FragCoord.xy / uRes;
+    if(suv.y < 0.16){
+      int idx = int(clamp(suv.x*32.0, 0.0, 31.0));
+      float h = uSpectrum[idx];
+      float colpos = fract(suv.x*32.0);
+      float bar = step(0.1, colpos)*step(colpos, 0.9)*step(suv.y/0.16, h);
+      vec3 eqcol = mix(vec3(0.1,0.9,1.0), vec3(1.0,0.1,0.7), suv.y/0.16);
+      color += eqcol*bar*1.5*uEq;
+    }
+  }
   color *= uFade;
   color = 1.0 - exp(-color*1.3);
   fragColor = vec4(color, 1.0);

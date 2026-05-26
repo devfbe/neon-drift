@@ -31,6 +31,7 @@ let renderer, audio, director;
 let t0 = 0;
 let running = false;
 let crtOn = false;
+let eqOn = false;
 
 const params = new URLSearchParams(location.search);
 const timeOffset = parseFloat(params.get("t") || "0") || 0;
@@ -97,6 +98,8 @@ function frame(now) {
     uDrop: levels.drop,
     uMouse: [mouse.x, mouse.y],
     uCrt: crtOn ? 1 : 0,
+    uEq: eqOn ? 1 : 0,
+    uSpectrum: audio.getSpectrum(32),
     ...state.uniforms,
   };
   if (forcedScene) {
@@ -168,6 +171,7 @@ window.addEventListener("keydown", (e) => {
     case "ArrowLeft": t0 += 10000; break;           // back 10s
     case "h": case "H": document.body.classList.toggle("hide-ui"); break;
     case "c": case "C": crtOn = !crtOn; break;
+    case "e": case "E": eqOn = !eqOn; break;
     case "+": case "=": renderer.setScale(renderer.scale + 0.25); break;
     case "-": renderer.setScale(renderer.scale - 0.25); break;
   }

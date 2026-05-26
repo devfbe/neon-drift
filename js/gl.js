@@ -103,6 +103,7 @@ export class Renderer {
       else if (v.length === 2) gl.uniform2f(loc, v[0], v[1]);
       else if (v.length === 3) gl.uniform3f(loc, v[0], v[1], v[2]);
       else if (v.length === 4) gl.uniform4f(loc, v[0], v[1], v[2], v[3]);
+      else if (v.length > 4) { const aloc = this._loc(prog, name + "[0]") || loc; gl.uniform1fv(aloc, v); }
     }
   }
 

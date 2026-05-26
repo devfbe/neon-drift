@@ -137,6 +137,18 @@ export class AudioEngine {
     this.trackName = file.name;
   }
 
+  getSpectrum(n) {
+    const out = new Array(n).fill(0);
+    if (!this.analyser) return out;
+    this.analyser.getByteFrequencyData(this.freq);
+    const bins = 256, per = Math.max(1, Math.floor(bins / n));
+    for (let i = 0; i < n; i++) {
+      let s = 0; for (let j = 0; j < per; j++) s += this.freq[i*per+j] || 0;
+      out[i] = s / per / 255;
+    }
+    return out;
+  }
+
   // ---- per-frame analysis ----
   getLevels() {
     if (!this.analyser) return this.levels;
