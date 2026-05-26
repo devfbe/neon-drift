@@ -259,15 +259,18 @@ vec3 figureNormal(vec3 p){
     figureField(p+e.yxy) - figureField(p-e.yxy),
     figureField(p+e.yyx) - figureField(p-e.yyx)));
 }
-vec3 figureFlight(vec2 uv){
-  // banking camera weaving forward through the lattice
-  float spd = 4.5;
-  vec3 cp = vec3(sin(uTime*0.25)*3.0, sin(uTime*0.19)*2.2, uTime*spd);
-  vec3 ct = vec3(sin((uTime+0.6)*0.25)*3.0, sin((uTime+0.6)*0.19)*2.2, uTime*spd + 5.0);
-  vec3 fwd = normalize(ct - cp);
+// banking forward-flight ray for a scene; sd seeds a different path per scene, cp returns the camera position
+vec3 flightRay(vec2 uv, float spd, float sd, out vec3 cp){
+  cp = vec3(sin((uTime+sd)*0.25)*3.0, sin((uTime+sd)*0.19)*2.2, uTime*spd);
+  vec3 ct = vec3(sin((uTime+sd+0.6)*0.25)*3.0, sin((uTime+sd+0.6)*0.19)*2.2, uTime*spd+5.0);
+  vec3 fwd = normalize(ct-cp);
   vec3 rt = normalize(cross(vec3(0,1,0), fwd));
   vec3 up = cross(fwd, rt);
-  vec3 rd = normalize(fwd*1.4 + rt*(uv.x + uMouse.x*0.3) + up*(uv.y + uMouse.y*0.3));
+  return normalize(fwd*1.4 + rt*(uv.x+uMouse.x*0.3) + up*(uv.y+uMouse.y*0.3));
+}
+vec3 figureFlight(vec2 uv){
+  // banking camera weaving forward through the lattice
+  vec3 cp; vec3 rd = flightRay(uv, 4.5, 0.0, cp);
 
   float t = 0.0; bool hit = false;
   for(int i=0;i<90;i++){
