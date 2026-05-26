@@ -8,11 +8,16 @@ void main() {
 }`;
 
 // ---------------------------------------------------------------------------
-// Main scene: neon-cyberpunk raymarcher.
-//  - analytic background: parallax starfield + fbm nebula
-//  - SDF metaball "gel bubbles" (glassy, fresnel, refraction) raymarched in front
-//  - additive laser beams
-// Driven entirely by uniforms (time + audio + per-part weights).
+// Main scene: neon-cyberpunk raymarcher with multiple weighted "scenes".
+// Active scene(s) are selected by the director through the weight uniforms;
+// only the active raymarch runs (gated by `if (weight > 0)`), so cost stays
+// bounded even though many effects live in one shader.
+//   background : parallax starfield + fbm nebula           (uStars / uNebula)
+//   bubbles    : glassy SDF metaballs, slow gel wobble      (uBubbles)
+//   tunnel     : analytic neon grid tunnel flight           (uTunnel)
+//   mega       : giant rotating grid-sphere + ring          (uMega)
+//   lasers     : additive beams                             (uLasers)
+//   kaleido    : screen-space mirror fold over everything   (uKaleido)
 // ---------------------------------------------------------------------------
 export const DEMO_FRAG = `#version 300 es
 precision highp float;
@@ -24,14 +29,19 @@ uniform float uBass;
 uniform float uMid;
 uniform float uTreble;
 uniform float uBeat;
-uniform float uNebula;   // 0..1 nebula presence
-uniform float uBubbles;  // 0..1 bubble presence
-uniform float uLasers;   // 0..1 laser presence
-uniform float uStars;    // 0..1 starfield presence
-uniform float uCamSpeed; // flight speed
-uniform float uFade;     // global fade (intro / loop)
+uniform float uNebula;
+uniform float uBubbles;
+uniform float uLasers;
+uniform float uStars;
+uniform float uTunnel;
+uniform float uMega;
+uniform float uKaleido;
+uniform float uCamSpeed;
+uniform float uFade;
 
 #define PI 3.14159265
+
+mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
 // --- hashing / noise -------------------------------------------------------
 float hash11(float p){ p = fract(p*0.1031); p *= p+33.33; p *= p+p; return fract(p); }
@@ -64,7 +74,6 @@ float fbm(vec3 p){
 // --- background: stars + nebula -------------------------------------------
 vec3 starfield(vec3 rd){
   vec3 col = vec3(0.0);
-  // layered parallax grids
   for(int L=0; L<3; L++){
     float scale = 60.0 + float(L)*90.0;
     vec3 p = rd*scale + vec3(0.0,0.0,uTime*(0.6+float(L)*0.4));
@@ -84,13 +93,11 @@ vec3 starfield(vec3 rd){
 
 vec3 nebula(vec3 rd){
   vec3 acc = vec3(0.0);
-  // a few depth slices sampled along the view direction (cheap volumetric look)
   for(int i=0;i<6;i++){
     float t = 2.0 + float(i)*1.6;
     vec3 p = rd*t + vec3(0.0,0.0, uTime*0.25);
     float d = fbm(p*0.6 + 12.0);
     d = pow(smoothstep(0.32, 0.95, d), 1.5);
-    // two-tone magenta/cyan mixing
     float m = fbm(p*0.3 - 4.0);
     vec3 tint = mix(vec3(1.0,0.15,0.85), vec3(0.15,0.85,1.0), smoothstep(0.3,0.7,m));
     acc += tint * d * (1.7/float(i+2));
@@ -99,9 +106,7 @@ vec3 nebula(vec3 rd){
   return acc * uNebula;
 }
 
-vec3 background(vec3 rd){
-  return nebula(rd) + starfield(rd);
-}
+vec3 background(vec3 rd){ return nebula(rd) + starfield(rd); }
 
 // --- gel bubbles : SDF metaballs ------------------------------------------
 float smin(float a, float b, float k){
@@ -110,7 +115,6 @@ float smin(float a, float b, float k){
 }
 
 float bubbleField(vec3 p){
-  // flow the field toward the camera
   vec3 q = p;
   q.z += uTime * uCamSpeed;
   float cell = 5.0;
@@ -120,24 +124,22 @@ float bubbleField(vec3 p){
   float r = 0.55 * (0.75 + uBass*1.1 + uBeat*0.35);
   float k = 0.7;
   float d = 1e9;
-  // three slowly drifting balls per cell
   for(int i=0;i<3;i++){
     vec3 rnd = hash33(vec3(zid, float(i)*7.0, 3.0)) - 0.5;
-    float ph = uTime*0.22 + float(i)*2.1 + zid;   // slow, lava-lamp drift
+    float ph = uTime*0.13 + float(i)*2.1 + zid;   // very slow lava-lamp drift
     vec3 off = vec3(
-      rnd.x*2.6 + sin(ph)*0.7,
-      rnd.y*2.0 + cos(ph*1.15)*0.7,
+      rnd.x*2.6 + sin(ph)*0.65,
+      rnd.y*2.0 + cos(ph*1.1)*0.65,
       rnd.z*1.2);
     float rr = r * (0.7 + 0.6*hash11(zid*13.0+float(i)));
-    float ds = length(q - off) - rr;
-    d = smin(d, ds, k);
+    d = smin(d, length(q - off) - rr, k);
   }
   // slow, gel-like surface wobble
-  d += 0.07 * sin(p.x*3.0 + uTime*0.3) * sin(p.y*3.0 + uTime*0.4);
+  d += 0.07 * sin(p.x*3.0 + uTime*0.18) * sin(p.y*3.0 + uTime*0.24);
   return d;
 }
 
-vec3 calcNormal(vec3 p){
+vec3 bubbleNormal(vec3 p){
   vec2 e = vec2(0.0015, 0.0);
   return normalize(vec3(
     bubbleField(p+e.xyy) - bubbleField(p-e.xyy),
@@ -145,22 +147,94 @@ vec3 calcNormal(vec3 p){
     bubbleField(p+e.yyx) - bubbleField(p-e.yyx)));
 }
 
-// --- lasers ----------------------------------------------------------------
-// distance from ray origin/dir to an infinite line (point a, dir u)
-float rayLineDist(vec3 ro, vec3 rd, vec3 a, vec3 u){
-  vec3 w0 = ro - a;
-  float b = dot(rd, u);
-  float d = dot(rd, w0);
-  float e = dot(u, w0);
-  float den = 1.0 - b*b;
-  den = max(den, 1e-4);
-  float sc = (b*e - d) / den;       // along ray
-  float tc = (e - b*d) / den;       // along line
-  vec3 pc = ro + max(sc,0.0)*rd;
-  vec3 qc = a + tc*u;
-  return length(pc - qc);
+// --- mega structure : giant rotating grid-sphere + neon ring --------------
+float megaField(vec3 wp){
+  vec3 p = wp - vec3(0.0, 0.0, 9.0);
+  p.xz *= rot(uTime*0.14);
+  p.xy *= rot(uTime*0.06);
+  float core = length(p) - 3.0;
+  vec2 q = vec2(length(p.xz) - 4.7, p.y);
+  float ring = length(q) - 0.14;
+  return min(core, ring);
+}
+vec3 megaNormal(vec3 p){
+  vec2 e = vec2(0.004, 0.0);
+  return normalize(vec3(
+    megaField(p+e.xyy) - megaField(p-e.xyy),
+    megaField(p+e.yxy) - megaField(p-e.yxy),
+    megaField(p+e.yyx) - megaField(p-e.yyx)));
+}
+// recompute the rotated object-space point + which primitive is nearest
+void megaParts(vec3 wp, out vec3 op, out float matId){
+  vec3 p = wp - vec3(0.0, 0.0, 9.0);
+  p.xz *= rot(uTime*0.14);
+  p.xy *= rot(uTime*0.06);
+  op = p;
+  float core = length(p) - 3.0;
+  vec2 q = vec2(length(p.xz) - 4.7, p.y);
+  float ring = length(q) - 0.14;
+  matId = core < ring ? 1.0 : 2.0;
 }
 
+vec3 megaColor(vec3 ro, vec3 rd, out float alpha){
+  alpha = 0.0;
+  float t = 4.0;
+  bool hit = false;
+  for(int i=0;i<90;i++){
+    vec3 p = ro + rd*t;
+    float d = megaField(p);
+    if(d < 0.002){ hit = true; break; }
+    t += d*0.7;
+    if(t > 22.0) break;
+  }
+  if(!hit) return vec3(0.0);
+  vec3 wp = ro + rd*t;
+  vec3 n = megaNormal(wp);
+  vec3 op; float matId; megaParts(wp, op, matId);
+  float fres = pow(clamp(1.0 - dot(n, -rd), 0.0, 1.0), 3.0);
+  vec3 col;
+  if(matId < 1.5){
+    // grid-sphere: neon tron grid in spherical coords + fresnel rim
+    vec3 ln = normalize(op);
+    float lat = asin(clamp(ln.y, -1.0, 1.0));
+    float lon = atan(ln.z, ln.x);
+    float la = abs(sin(lat*12.0));
+    float lo = abs(sin(lon*12.0));
+    float grid = pow(1.0 - min(la, lo), 22.0);
+    vec3 tint = mix(vec3(0.1,0.9,1.0), vec3(1.0,0.1,0.8), 0.5+0.5*sin(lon*2.0+uTime*0.4));
+    col = tint*grid*(2.2 + uBeat*1.5) + tint*fres*1.6 + vec3(0.03,0.0,0.07);
+  } else {
+    // emissive neon ring
+    col = mix(vec3(1.0,0.2,0.9), vec3(0.2,1.0,1.0), 0.5+0.5*sin(uTime)) * (2.6 + uBeat*1.5);
+  }
+  alpha = 1.0;
+  return col;
+}
+
+// --- neon tunnel (analytic) -----------------------------------------------
+vec3 tunnel(vec2 uv){
+  float r = length(uv);
+  float a = atan(uv.y, uv.x);
+  float depth = 0.5/(r+0.06) + uTime*0.8;
+  float ring = abs(fract(depth*1.5) - 0.5)*2.0;
+  float ang  = abs(fract(a/PI*6.0) - 0.5)*2.0;
+  float grid = pow(1.0-ring, 14.0) + pow(1.0-ang, 14.0);
+  vec3 tint = mix(vec3(1.0,0.1,0.8), vec3(0.1,0.9,1.0), 0.5+0.5*sin(depth*0.6 + a));
+  float fade = smoothstep(0.0, 0.45, r);
+  vec3 col = tint*grid*fade*(1.7 + uBeat*1.2) + tint*0.05*fade;
+  // far light at the vanishing point
+  col += vec3(0.4,0.7,1.0) * pow(max(0.0, 1.0 - r*1.6), 4.0) * 0.6;
+  return col;
+}
+
+// --- lasers ----------------------------------------------------------------
+float rayLineDist(vec3 ro, vec3 rd, vec3 a, vec3 u){
+  vec3 w0 = ro - a;
+  float b = dot(rd, u), d = dot(rd, w0), e = dot(u, w0);
+  float den = max(1.0 - b*b, 1e-4);
+  float sc = (b*e - d)/den, tc = (e - b*d)/den;
+  return length((ro + max(sc,0.0)*rd) - (a + tc*u));
+}
 vec3 lasers(vec3 ro, vec3 rd){
   vec3 col = vec3(0.0);
   float pulse = uLasers * (0.35 + uTreble*1.6 + uBeat*0.8);
@@ -172,7 +246,6 @@ vec3 lasers(vec3 ro, vec3 rd){
     float dist = rayLineDist(ro, rd, a, u);
     float glow = pulse * 0.015 / (dist*dist + 0.0006);
     vec3 tint = mix(vec3(1.0,0.1,0.8), vec3(0.2,1.0,1.0), fract(fi*0.37));
-    // flicker so beams fire in bursts
     float fire = smoothstep(0.3, 0.9, sin(t*3.0)*0.5+0.5);
     col += tint * glow * fire;
   }
@@ -182,60 +255,73 @@ vec3 lasers(vec3 ro, vec3 rd){
 void main(){
   vec2 uv = (gl_FragCoord.xy - 0.5*uRes) / uRes.y;
 
-  // camera with subtle sway
-  vec3 ro = vec3(0.0, 0.0, 0.0);
+  // kaleidoscope mirror fold (mirrors the whole scene into a mandala)
+  if(uKaleido > 0.001){
+    float a = atan(uv.y, uv.x) + uTime*0.05;
+    float r = length(uv);
+    float seg = 6.2831853/6.0;
+    a = mod(a, seg); a = abs(a - seg*0.5);
+    vec2 ku = vec2(cos(a), sin(a)) * r;
+    uv = mix(uv, ku, uKaleido);
+  }
+
+  vec3 ro = vec3(0.0);
   vec3 rd = normalize(vec3(uv, 1.25));
   float sw = uTime*0.2;
   float ca = cos(sw*0.5)*0.05, sa = sin(sw*0.5)*0.05;
-  rd.xy = mat2(cos(sa),-sin(sa),sin(sa),cos(sa)) * rd.xy;
-  rd.xz = mat2(cos(ca),-sin(ca),sin(ca),cos(ca)) * rd.xz;
+  rd.xy = rot(sa) * rd.xy;
+  rd.xz = rot(ca) * rd.xz;
 
-  vec3 bg = background(rd);
-  vec3 color = bg;
+  vec3 color = background(rd);
 
-  // raymarch the bubbles in front
+  // neon tunnel
+  if(uTunnel > 0.001){
+    vec3 tc = tunnel(uv) + background(rd)*0.25;
+    color = mix(color, tc, uTunnel);
+  }
+
+  // gel bubbles
   if(uBubbles > 0.001){
-    float t = 0.0;
-    float hit = -1.0;
+    float t = 0.0; float hit = -1.0;
     for(int i=0;i<80;i++){
-      vec3 p = ro + rd*t;
-      float d = bubbleField(p);
+      float d = bubbleField(ro + rd*t);
       if(d < 0.001){ hit = t; break; }
-      t += d * 0.85;
+      t += d*0.85;
       if(t > 18.0) break;
     }
     if(hit > 0.0){
       vec3 p = ro + rd*hit;
-      vec3 n = calcNormal(p);
+      vec3 n = bubbleNormal(p);
       float fres = pow(clamp(1.0 - dot(n, -rd), 0.0, 1.0), 3.0);
-      // refracted background lookup
       vec3 refr = refract(rd, n, 0.86);
       vec3 behind = background(normalize(refr + rd*0.2));
-      // neon body tint shifting over space/time
       vec3 body = mix(vec3(0.9,0.1,0.7), vec3(0.1,0.8,1.0),
                       0.5+0.5*sin(p.z*0.6 + uTime + p.x));
       vec3 spec = vec3(1.0) * pow(max(dot(reflect(rd,n), normalize(vec3(0.4,0.6,-1.0))),0.0), 60.0);
-      // gel/glass: mostly transparent (see-through to the refracted background),
-      // with a colored neon rim (fresnel) and a tight specular glint.
+      // gel/glass: mostly see-through, colored neon rim + tight glint
       vec3 glass = behind*0.95 + body*(0.12 + uBass*0.35) + fres*body*1.9 + spec*1.6;
       glass *= 0.75 + uBeat*0.45;
-      float cover = uBubbles;
-      color = mix(color, glass, cover);
+      color = mix(color, glass, uBubbles);
     }
   }
 
-  // additive lasers on top
+  // giant mega structure
+  if(uMega > 0.001){
+    float alpha;
+    vec3 mc = megaColor(ro, rd, alpha);
+    color = mix(color, mc, uMega*alpha);
+  }
+
+  // additive lasers
   color += lasers(ro, rd);
 
-  // tone + fade
   color *= uFade;
-  color = 1.0 - exp(-color*1.3);            // soft tonemap
+  color = 1.0 - exp(-color*1.3);
   fragColor = vec4(color, 1.0);
 }`;
 
 // ---------------------------------------------------------------------------
-// Post pass: cheap bloom (thresholded radial taps) + chromatic aberration
-// + vignette + film grain. Reads the scene texture rendered by DEMO_FRAG.
+// Post pass: cheap bloom + chromatic aberration + vignette + film grain.
 // ---------------------------------------------------------------------------
 export const POST_FRAG = `#version 300 es
 precision highp float;
@@ -252,14 +338,12 @@ void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 center = uv - 0.5;
 
-  // chromatic aberration toward edges (kicks on beat)
   float ca = (0.0025 + uBeat*0.006) * length(center);
   vec3 base;
   base.r = texture(uScene, uv + center*ca).r;
   base.g = texture(uScene, uv).g;
   base.b = texture(uScene, uv - center*ca).b;
 
-  // bloom: radial bright-pass taps
   vec3 bloom = vec3(0.0);
   float total = 0.0;
   const int N = 24;
@@ -277,13 +361,8 @@ void main(){
   bloom /= max(total, 1.0);
 
   vec3 col = base + bloom*1.6;
-
-  // vignette
   col *= smoothstep(1.15, 0.35, length(center));
-
-  // film grain
   float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)) + uTime*60.0) * 43758.5453);
   col += (g-0.5)*0.04;
-
   fragColor = vec4(col, 1.0);
 }`;

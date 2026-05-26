@@ -28,7 +28,26 @@ export class AudioEngine {
     this.analyser.connect(this.master);
     this.master.connect(this.ctx.destination);
 
-    this._startPlaceholder();
+    // default to the baked-in track; only fall back to the synth beat if it fails
+    try {
+      await this._loadDefaultTrack();
+    } catch (e) {
+      console.warn("Default-Track nicht ladbar, nutze Synth-Beat:", e);
+      this._startPlaceholder();
+    }
+  }
+
+  async _loadDefaultTrack() {
+    const res = await fetch("./assets/track.ogg");
+    if (!res.ok) throw new Error("track.ogg HTTP " + res.status);
+    const audioBuf = await this.ctx.decodeAudioData(await res.arrayBuffer());
+    const src = this.ctx.createBufferSource();
+    src.buffer = audioBuf;
+    src.loop = true;
+    src.connect(this.analyser);
+    src.start();
+    this._source = src;
+    this.trackName = "Polar Byte Drift";
   }
 
   // ---- synthesized placeholder: 125 BPM 4/4 with kick, hat and bass synth ----

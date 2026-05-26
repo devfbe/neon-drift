@@ -10,18 +10,22 @@ python3 -m http.server 8080
 # dann http://localhost:8080 im Browser öffnen, "Click to start" drücken
 ```
 
-Beim Start läuft ein synthetisierter Platzhalter-Beat. **Zieh ein WAV/MP3
-ins Browserfenster**, um deinen eigenen Track laufen zu lassen — die ganze
-Demo (Bubbles, Laser, Nebula) reagiert in Echtzeit darauf.
+Beim Start läuft der eingebackene Track (`assets/track.ogg`). Du kannst
+jederzeit **ein eigenes WAV/MP3 ins Browserfenster ziehen**, um es zu
+ersetzen — die ganze Demo reagiert in Echtzeit darauf. (Fällt der Default-
+Track aus, springt ein synthetisierter Beat als Fallback ein.)
 
 ## Die Demo
 
-Eine Multi-Part-Timeline (loopt endlos, 90s):
+Eine Multi-Part-Timeline (loopt endlos, 150s):
 
-1. **Intro** — Sterne, Titel glüht rein
-2. **Nebula Flight** — Flug durch driftende Nebula, erste Gel-Bubbles
-3. **Bubble Chaos** — glasige Metaballs, pumpen zum Bass
-4. **Laser Finale** — Laser-Salven zum Treble, Greetings-Scroller
+1. **Intro** (0–12s) — Sterne, Titel glüht rein
+2. **Nebula Flight** (12–30s) — Flug durch driftende Nebula, erste Gel-Bubbles
+3. **Gel Bubbles** (30–52s) — transparente, glasige Metaballs, langsam wabernd
+4. **Neon Tunnel** (52–74s) — Flug durch eine Neon-Gitter-Röhre
+5. **Mega Structure** (74–100s) — gigantische rotierende Tron-Gitterkugel + Ring
+6. **Kaleidoscope** (100–124s) — gespiegelte Mandala-Psychedelik
+7. **Laser Finale** (124–150s) — Laser-Salven, Greetings-Scroller
 
 Audio: Bass pumpt die Bubbles, Höhen triggern Laser, Beat treibt Glow &
 Chromatic Aberration.

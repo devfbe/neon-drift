@@ -40,6 +40,10 @@ async function begin() {
   catch (e) { console.warn("Audio konnte nicht starten, Visuals laufen trotzdem:", e); }
   startEl.style.opacity = "0";
   setTimeout(() => (startEl.style.display = "none"), 600);
+  if (audio.trackName) {
+    nowPlaying.textContent = "♪ " + audio.trackName;
+    nowPlaying.style.opacity = "1";
+  }
   t0 = performance.now() - timeOffset * 1000;
   requestAnimationFrame(frame);
 }
