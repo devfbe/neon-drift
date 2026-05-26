@@ -55,6 +55,7 @@ export class Director {
         uCity: 0,
         uTentacle: 0,
         uMandel: 0,
+        uWire: 0,
         uFloor: floor,
         uTunnel: tunnel,
         uWorm: 0,

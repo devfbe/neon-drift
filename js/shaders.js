@@ -46,6 +46,7 @@ uniform float uDrop;
 uniform float uCamSpeed;
 uniform float uFade;
 uniform float uMandel;
+uniform float uWire;
 
 #define PI 3.14159265
 
@@ -460,6 +461,35 @@ vec3 mandelboxFlight(vec2 uv){
   return tint*(0.15+fres*2.5)*exp(-t*0.05);
 }
 
+// --- wireframe vector object : glowing rotating neon box-frame + octahedron shell ----
+float sdBoxFrame(vec3 p, vec3 b, float e){
+  p = abs(p)-b; vec3 q = abs(p+e)-e;
+  return min(min(
+    length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+    length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+    length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+}
+float wireField(vec3 wp){
+  vec3 p = wp - vec3(0.0,0.0,7.0);
+  p.xy *= rot(uTime*0.4); p.yz *= rot(uTime*0.3);
+  float box = sdBoxFrame(p, vec3(1.6), 0.06);
+  vec3 p2 = p; p2.xy *= rot(0.7854); p2.xz *= rot(0.6155);
+  float box2 = sdBoxFrame(p2, vec3(1.1), 0.045);
+  return min(box, box2);
+}
+vec3 wireNormal(vec3 p){ vec2 e=vec2(0.004,0.0); return normalize(vec3(
+  wireField(p+e.xyy)-wireField(p-e.xyy), wireField(p+e.yxy)-wireField(p-e.yxy),
+  wireField(p+e.yyx)-wireField(p-e.yyx))); }
+vec3 wireScene(vec3 ro, vec3 rd){
+  float t=2.0; bool hit=false;
+  for(int i=0;i<80;i++){ float d=wireField(ro+rd*t); if(d<0.002){hit=true;break;} t+=d*0.8; if(t>20.0)break; }
+  if(!hit) return vec3(0.0);
+  vec3 p=ro+rd*t; vec3 n=wireNormal(p);
+  float fres=pow(clamp(1.0-dot(n,-rd),0.0,1.0),2.0);
+  vec3 tint=mix(vec3(0.1,1.0,0.9), vec3(1.0,0.2,0.9), 0.5+0.5*sin(uTime));
+  return tint*(1.2+fres*2.5+uBeat);
+}
+
 // --- lasers ----------------------------------------------------------------
 float rayLineDist(vec3 ro, vec3 rd, vec3 a, vec3 u){
   vec3 w0 = ro - a;
@@ -567,6 +597,9 @@ void main(){
     vec3 mc = megaColor(ro, rd, alpha);
     color = mix(color, mc, uMega*alpha);
   }
+
+  // wireframe vector object
+  if(uWire > 0.001){ color = mix(color, wireScene(ro, rd), uWire); }
 
   // additive lasers
   color += lasers(ro, rd);
