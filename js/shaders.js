@@ -120,25 +120,25 @@ float smin(float a, float b, float k){
 float bubbleField(vec3 p){
   vec3 q = p;
   q.z += uTime * uCamSpeed;
-  float cell = 5.0;
+  float cell = 8.0;                              // larger cell -> fewer bubbles
   float zid = floor(q.z / cell);
   q.z = mod(q.z, cell) - cell*0.5;
 
-  float r = 0.55 * (0.75 + uBass*1.1 + uBeat*0.35);
-  float k = 0.7;
+  float r = 0.3 * (0.85 + uBass*0.5 + uBeat*0.2);  // small, only gently audio-scaled
+  float k = 0.35;                                  // keep bubbles distinct, not one blob
   float d = 1e9;
-  for(int i=0;i<3;i++){
+  for(int i=0;i<2;i++){                             // only two per cell
     vec3 rnd = hash33(vec3(zid, float(i)*7.0, 3.0)) - 0.5;
-    float ph = uTime*0.13 + float(i)*2.1 + zid;   // very slow lava-lamp drift
+    float ph = uTime*0.13 + float(i)*2.1 + zid;     // very slow lava-lamp drift
     vec3 off = vec3(
-      rnd.x*2.6 + sin(ph)*0.65,
-      rnd.y*2.0 + cos(ph*1.1)*0.65,
-      rnd.z*1.2);
-    float rr = r * (0.7 + 0.6*hash11(zid*13.0+float(i)));
+      rnd.x*3.0 + sin(ph)*0.6,
+      rnd.y*2.4 + cos(ph*1.1)*0.6,
+      rnd.z*1.5);
+    float rr = r * (0.7 + 0.5*hash11(zid*13.0+float(i)));
     d = smin(d, length(q - off) - rr, k);
   }
   // slow, gel-like surface wobble
-  d += 0.07 * sin(p.x*3.0 + uTime*0.18) * sin(p.y*3.0 + uTime*0.24);
+  d += 0.04 * sin(p.x*3.5 + uTime*0.18) * sin(p.y*3.5 + uTime*0.24);
   return d;
 }
 
@@ -331,14 +331,13 @@ void main(){
       vec3 p = ro + rd*hit;
       vec3 n = bubbleNormal(p);
       float fres = pow(clamp(1.0 - dot(n, -rd), 0.0, 1.0), 3.0);
+      // clear glass: see straight through to the refracted background
       vec3 refr = refract(rd, n, 0.86);
       vec3 behind = background(normalize(refr + rd*0.2));
-      vec3 body = mix(vec3(0.9,0.1,0.7), vec3(0.1,0.8,1.0),
-                      0.5+0.5*sin(p.z*0.6 + uTime + p.x));
-      vec3 spec = vec3(1.0) * pow(max(dot(reflect(rd,n), normalize(vec3(0.4,0.6,-1.0))),0.0), 60.0);
-      // gel/glass: mostly see-through, colored neon rim + tight glint
-      vec3 glass = behind*0.95 + body*(0.12 + uBass*0.35) + fres*body*1.9 + spec*1.6;
-      glass *= 0.75 + uBeat*0.45;
+      vec3 spec = vec3(1.0) * pow(max(dot(reflect(rd,n), normalize(vec3(0.4,0.6,-1.0))),0.0), 80.0);
+      // colourless gel: refraction + faint cool rim (fresnel) + tight white glint
+      vec3 rim = vec3(0.85, 0.95, 1.0);
+      vec3 glass = behind + fres*rim*0.9 + spec*1.8;
       color = mix(color, glass, uBubbles);
     }
   }
@@ -380,7 +379,7 @@ void main(){
 }`;
 
 // ---------------------------------------------------------------------------
-// Post pass: bloom + chromatic aberration + glitch + vignette + film grain.
+// Post pass: bloom + chromatic aberration + vignette + film grain.
 // ---------------------------------------------------------------------------
 export const POST_FRAG = `#version 300 es
 precision highp float;
@@ -390,29 +389,18 @@ uniform sampler2D uScene;
 uniform vec2  uRes;
 uniform float uTime;
 uniform float uBeat;
-uniform float uGlitch;
-uniform float uDrop;
 
 float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
-float h21(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
 
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 center = uv - 0.5;
 
-  // glitch: horizontal block displacement on bands
-  float gl = clamp(uGlitch + uDrop*0.6, 0.0, 1.0);
-  if(gl > 0.001){
-    float band = floor(uv.y*24.0);
-    float jit = (h21(vec2(band, floor(uTime*18.0))) - 0.5);
-    uv.x += jit * gl * 0.06 * step(0.6, h21(vec2(band, floor(uTime*12.0))));
-  }
-
-  float ca = (0.0025 + uBeat*0.006 + gl*0.02) * length(center) + gl*0.01;
+  float ca = (0.0025 + uBeat*0.006) * length(center);
   vec3 base;
-  base.r = texture(uScene, uv + center*ca + vec2(ca,0.0)).r;
+  base.r = texture(uScene, uv + center*ca).r;
   base.g = texture(uScene, uv).g;
-  base.b = texture(uScene, uv - center*ca - vec2(ca,0.0)).b;
+  base.b = texture(uScene, uv - center*ca).b;
 
   vec3 bloom = vec3(0.0);
   float total = 0.0;

@@ -12,14 +12,12 @@
 //   8 Laser Finale 136 -162   lasers + greetings scroller
 
 const LOOP = 162.0;
-const BOUNDARIES = [12, 28, 48, 70, 90, 114, 136];   // part transitions -> glitch bursts
 
 function clamp01(x) { return Math.min(1, Math.max(0, x)); }
 function smoothstep(a, b, x) { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); }
 function seg(t, start, end, fade) {
   return smoothstep(start, start + fade, t) * (1 - smoothstep(end - fade, end, t));
 }
-function pulse(t, c, w) { const x = (t - c) / w; return Math.exp(-x * x); }
 
 export class Director {
   update(time) {
@@ -39,10 +37,6 @@ export class Director {
     // motion-blur trails: light at the start, heavier through the spectacle parts
     const trail = clamp01(0.5 + 0.32 * Math.max(tunnel, mega * 0.7, kaleido, lasers));
 
-    // glitch bursts at part transitions
-    let glitch = 0;
-    for (const b of BOUNDARIES) glitch = Math.max(glitch, pulse(t, b, 0.7));
-
     const finale = smoothstep(132, 156, t);
     const camSpeed = 1.1 + smoothstep(24, 44, t) * 0.5 + finale * 3.0;
 
@@ -61,7 +55,6 @@ export class Director {
         uKaleido: kaleido,
         uLasers: lasers,
         uTrail: trail,
-        uGlitch: glitch,
         uCamSpeed: camSpeed,
         uFade: fade,
       },
