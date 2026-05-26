@@ -68,6 +68,16 @@ async function begin() {
   requestAnimationFrame(frame);
 }
 
+// debug: ?scene=NAME isolates one scene at full weight (for verifying new scenes)
+const SCENE_WEIGHTS = ["uStars", "uNebula", "uBubbles", "uFigures", "uFloor",
+  "uTunnel", "uMega", "uKaleido", "uLasers", "uCity", "uWorm", "uTentacle",
+  "uMandel", "uWire"];
+const SCENE_ALIAS = { city: "uCity", worm: "uWorm", wormhole: "uWorm",
+  tentacle: "uTentacle", mandel: "uMandel", mandelbox: "uMandel", wire: "uWire",
+  figures: "uFigures", mega: "uMega", tunnel: "uTunnel", floor: "uFloor",
+  nebula: "uNebula", bubbles: "uBubbles", kaleido: "uKaleido" };
+const forcedScene = SCENE_ALIAS[params.get("scene")] || null;
+
 function frame(now) {
   const time = (now - t0) / 1000;
   const levels = audio.getLevels();
@@ -77,7 +87,7 @@ function frame(now) {
   mouse.x += (mouse.tx - mouse.x) * 0.08;
   mouse.y += (mouse.ty - mouse.y) * 0.08;
 
-  renderer.setUniforms({
+  const u = {
     uTime: time,
     uBass: levels.bass,
     uMid: levels.mid,
@@ -86,7 +96,13 @@ function frame(now) {
     uDrop: levels.drop,
     uMouse: [mouse.x, mouse.y],
     ...state.uniforms,
-  });
+  };
+  if (forcedScene) {
+    for (const k of SCENE_WEIGHTS) u[k] = 0;
+    u[forcedScene] = 1;
+    u.uFade = 1;
+  }
+  renderer.setUniforms(u);
   renderer.render();
 
   // overlays
