@@ -679,6 +679,15 @@ void main(){
       blur += texture(uScene, uv + vec2(cos(a),sin(a))*focus*uDof*0.012).rgb; }
     col = mix(col, blur/8.0, focus*uDof);
   }
+  // lens-flare ghosts: echo bright areas along the axis toward the centre
+  vec3 flare = vec3(0.0);
+  for(int i=1;i<=4;i++){
+    vec2 gp = center * (-0.4*float(i)) + 0.5;
+    vec3 s = texture(uScene, gp).rgb;
+    float b = max(luma(s)-0.7, 0.0);
+    flare += s*b * (0.4/float(i)) * vec3(1.0,0.8,0.9);
+  }
+  col += flare;
   col *= smoothstep(1.15, 0.35, length(center));
   float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)) + uTime*60.0) * 43758.5453);
   col += (g-0.5)*0.04;
