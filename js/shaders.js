@@ -45,6 +45,7 @@ uniform vec2  uMouse;
 uniform float uDrop;
 uniform float uCamSpeed;
 uniform float uFade;
+uniform float uMandel;
 
 #define PI 3.14159265
 
@@ -426,6 +427,39 @@ vec3 wormholeFlight(vec2 uv){
   return col;
 }
 
+// --- mandelbox temple : slow zoom-flight into a self-similar fractal -------
+float mandelboxField(vec3 p){
+  vec3 z = p;
+  float dz = 1.0;
+  float scale = 2.0;
+  for(int i=0;i<10;i++){
+    z = clamp(z, -1.0, 1.0)*2.0 - z;
+    float r2 = dot(z,z);
+    float k = max(1.0/r2, 1.0);
+    z *= k; dz *= k;
+    z = z*scale + p; dz = dz*scale + 1.0;
+  }
+  return length(z)/dz;
+}
+vec3 mandelboxNormal(vec3 p){ vec2 e=vec2(0.002,0.0); return normalize(vec3(
+  mandelboxField(p+e.xyy)-mandelboxField(p-e.xyy), mandelboxField(p+e.yxy)-mandelboxField(p-e.yxy),
+  mandelboxField(p+e.yyx)-mandelboxField(p-e.yyx))); }
+vec3 mandelboxFlight(vec2 uv){
+  float ang = uTime*0.08;
+  vec3 cp = vec3(cos(ang)*3.5, sin(uTime*0.06)*1.5, sin(ang)*3.5);
+  vec3 target = vec3(0.0, 0.0, 0.0);
+  vec3 fwd = normalize(target - cp);
+  vec3 rt = normalize(cross(vec3(0,1,0),fwd)); vec3 up = cross(fwd,rt);
+  vec3 rd = normalize(fwd*1.6 + rt*uv.x + up*uv.y);
+  float t=0.1; bool hit=false;
+  for(int i=0;i<120;i++){ float d=mandelboxField(cp+rd*t)*0.5; if(d<0.002){hit=true;break;} t+=d; if(t>20.0)break; }
+  if(!hit) return vec3(0.02,0.0,0.05);
+  vec3 p=cp+rd*t; vec3 n=mandelboxNormal(p);
+  float fres=pow(clamp(1.0-dot(n,-rd),0.0,1.0),2.0);
+  vec3 tint=mix(vec3(0.2,0.9,1.0), vec3(1.0,0.2,0.8), 0.5+0.5*sin(p.x*2.0+p.y*1.3+uTime*0.5));
+  return tint*(0.15+fres*2.5)*exp(-t*0.05);
+}
+
 // --- lasers ----------------------------------------------------------------
 float rayLineDist(vec3 ro, vec3 rd, vec3 a, vec3 u){
   vec3 w0 = ro - a;
@@ -485,6 +519,8 @@ void main(){
   if(uCity > 0.001){ color = mix(color, cityFlight(uv) + background(rd)*0.1, uCity); }
 
   if(uTentacle > 0.001){ color = mix(color, tentacleFlight(uv) + background(rd)*0.1, uTentacle); }
+
+  if(uMandel > 0.001){ color = mix(color, mandelboxFlight(uv), uMandel); }
 
   // outrun grid floor + neon sun
   if(uFloor > 0.001){
