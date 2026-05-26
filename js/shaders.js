@@ -120,20 +120,20 @@ float bubbleField(vec3 p){
   float r = 0.55 * (0.75 + uBass*1.1 + uBeat*0.35);
   float k = 0.7;
   float d = 1e9;
-  // three wobbling balls per cell
+  // three slowly drifting balls per cell
   for(int i=0;i<3;i++){
     vec3 rnd = hash33(vec3(zid, float(i)*7.0, 3.0)) - 0.5;
-    float ph = uTime*0.8 + float(i)*2.1 + zid;
+    float ph = uTime*0.22 + float(i)*2.1 + zid;   // slow, lava-lamp drift
     vec3 off = vec3(
-      rnd.x*2.6 + sin(ph)*0.8,
-      rnd.y*2.0 + cos(ph*1.3)*0.8,
+      rnd.x*2.6 + sin(ph)*0.7,
+      rnd.y*2.0 + cos(ph*1.15)*0.7,
       rnd.z*1.2);
     float rr = r * (0.7 + 0.6*hash11(zid*13.0+float(i)));
     float ds = length(q - off) - rr;
     d = smin(d, ds, k);
   }
-  // gentle surface wobble
-  d += 0.06 * sin(p.x*4.0 + uTime) * sin(p.y*4.0 + uTime*1.3);
+  // slow, gel-like surface wobble
+  d += 0.07 * sin(p.x*3.0 + uTime*0.3) * sin(p.y*3.0 + uTime*0.4);
   return d;
 }
 
@@ -214,9 +214,11 @@ void main(){
       // neon body tint shifting over space/time
       vec3 body = mix(vec3(0.9,0.1,0.7), vec3(0.1,0.8,1.0),
                       0.5+0.5*sin(p.z*0.6 + uTime + p.x));
-      vec3 spec = vec3(1.0) * pow(max(dot(reflect(rd,n), normalize(vec3(0.4,0.6,-1.0))),0.0), 40.0);
-      vec3 glass = behind*0.7 + body*(0.35 + uBass*0.5) + fres*body*2.0 + spec*1.5;
-      glass *= 0.6 + uBeat*0.6;
+      vec3 spec = vec3(1.0) * pow(max(dot(reflect(rd,n), normalize(vec3(0.4,0.6,-1.0))),0.0), 60.0);
+      // gel/glass: mostly transparent (see-through to the refracted background),
+      // with a colored neon rim (fresnel) and a tight specular glint.
+      vec3 glass = behind*0.95 + body*(0.12 + uBass*0.35) + fres*body*1.9 + spec*1.6;
+      glass *= 0.75 + uBeat*0.45;
       float cover = uBubbles;
       color = mix(color, glass, cover);
     }
