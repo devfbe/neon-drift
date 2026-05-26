@@ -34,6 +34,7 @@ uniform float uBubbles;
 uniform float uLasers;
 uniform float uStars;
 uniform float uTunnel;
+uniform float uWorm;
 uniform float uMega;
 uniform float uKaleido;
 uniform float uFloor;
@@ -383,6 +384,21 @@ vec3 tunnel(vec2 uv){
   return col;
 }
 
+// --- wormhole flight (analytic) -------------------------------------------
+vec3 wormholeFlight(vec2 uv){
+  float r = length(uv);
+  float a = atan(uv.y, uv.x);
+  float depth = 1.2/(r+0.05) + uTime*1.2;
+  a += depth*0.25 + sin(uTime*0.5)*0.6;          // twist
+  float rings = pow(1.0-abs(fract(depth*1.2)-0.5)*2.0, 12.0);
+  float spokes = pow(1.0-abs(fract(a/3.14159*8.0)-0.5)*2.0, 10.0);
+  vec3 tint = mix(vec3(0.7,0.1,1.0), vec3(0.1,0.9,1.0), 0.5+0.5*sin(depth*0.5+a));
+  float fade = smoothstep(0.0, 0.5, r);
+  vec3 col = tint*(rings+spokes)*fade*1.8;
+  col += vec3(0.6,0.4,1.0)*pow(max(0.0,1.0-r*1.5),5.0)*(0.8+uBeat); // blazing center
+  return col;
+}
+
 // --- lasers ----------------------------------------------------------------
 float rayLineDist(vec3 ro, vec3 rd, vec3 a, vec3 u){
   vec3 w0 = ro - a;
@@ -452,6 +468,9 @@ void main(){
     vec3 tc = tunnel(uv) + background(rd)*0.25;
     color = mix(color, tc, uTunnel);
   }
+
+  // wormhole flight
+  if(uWorm > 0.001){ color = mix(color, wormholeFlight(uv), uWorm); }
 
   // gel bubbles
   if(uBubbles > 0.001){
