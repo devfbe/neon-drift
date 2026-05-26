@@ -79,6 +79,7 @@ export class Director {
         uTrail: trail,
         uCamSpeed: camSpeed,
         uFade: fade,
+        uDof: 0.6,
       },
       overlay: { title, subtitle, scroller },
     };

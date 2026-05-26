@@ -142,6 +142,7 @@ export class Renderer {
     gl.uniform2f(this._loc(this.postProg, "uRes"), this.fw, this.fh);
     gl.uniform1f(this._loc(this.postProg, "uTime"), u.uTime || 0);
     gl.uniform1f(this._loc(this.postProg, "uBeat"), u.uBeat || 0);
+    gl.uniform1f(this._loc(this.postProg, "uDof"), u.uDof || 0);
     gl.uniform1f(this._loc(this.postProg, "uGlitch"), u.uGlitch || 0);
     gl.uniform1f(this._loc(this.postProg, "uDrop"), u.uDrop || 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

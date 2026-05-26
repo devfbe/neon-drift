@@ -641,6 +641,7 @@ uniform sampler2D uScene;
 uniform vec2  uRes;
 uniform float uTime;
 uniform float uBeat;
+uniform float uDof;
 
 float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
 
@@ -671,6 +672,13 @@ void main(){
   bloom /= max(total, 1.0);
 
   vec3 col = base + bloom*1.6;
+  float focus = smoothstep(0.0, 0.6, length(center));   // 0 = sharp centre
+  if(uDof > 0.001 && focus > 0.001){
+    vec3 blur = vec3(0.0);
+    for(int i=0;i<8;i++){ float a=float(i)/8.0*6.2831;
+      blur += texture(uScene, uv + vec2(cos(a),sin(a))*focus*uDof*0.012).rgb; }
+    col = mix(col, blur/8.0, focus*uDof);
+  }
   col *= smoothstep(1.15, 0.35, length(center));
   float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)) + uTime*60.0) * 43758.5453);
   col += (g-0.5)*0.04;
