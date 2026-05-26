@@ -97,16 +97,17 @@ vec3 starfield(vec3 rd){
 
 vec3 nebula(vec3 rd){
   vec3 acc = vec3(0.0);
-  for(int i=0;i<6;i++){
-    float t = 2.0 + float(i)*1.6;
-    vec3 p = rd*t + vec3(0.0,0.0, uTime*0.25);
-    float d = fbm(p*0.6 + 12.0);
+  float fly = uTime * (0.9 + uCamSpeed*0.6);   // forward motion
+  for(int i=0;i<8;i++){
+    float t = 1.5 + float(i)*1.4;
+    vec3 p = rd*t + vec3(sin(uTime*0.1)*1.5, cos(uTime*0.08)*1.0, fly);
+    float d = fbm(p*0.55 + 12.0);
     d = pow(smoothstep(0.32, 0.95, d), 1.5);
     float m = fbm(p*0.3 - 4.0);
     vec3 tint = mix(vec3(1.0,0.15,0.85), vec3(0.15,0.85,1.0), smoothstep(0.3,0.7,m));
-    acc += tint * d * (1.7/float(i+2));
+    acc += tint * d * (1.6/float(i+2));
   }
-  acc *= 1.35 + uMid*1.6;
+  acc *= 1.3 + uMid*1.6;
   return acc * uNebula;
 }
 
