@@ -3,6 +3,8 @@
 Eine audio-reaktive WebGL-Demoscene-Demo im Neon-Cyberpunk-Stil. Reines
 HTML/CSS/JS + GLSL — kein Build-Step, keine Dependencies.
 
+![Vorschau: Ausschnitte aus sieben der 14 Szenen](docs/preview.gif)
+
 ## Starten
 
 ```sh
@@ -14,6 +16,8 @@ Beim Start läuft der eingebackene Track (`assets/track.ogg`). Du kannst
 jederzeit **ein eigenes WAV/MP3 ins Browserfenster ziehen**, um es zu
 ersetzen — die ganze Demo reagiert in Echtzeit darauf. (Fällt der Default-
 Track aus, springt ein synthetisierter Beat als Fallback ein.)
+
+Der mitgelieferte Track wurde mit [Suno](https://suno.com) erzeugt.
 
 ## Die Demo
 
